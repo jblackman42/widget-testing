@@ -13,7 +13,7 @@ class MinistryQuestionGraph extends HTMLElement {
     const data = await axios({
         method: 'post',
         url: 'https://my.pureheart.org/ministryplatformapi/oauth/connect/token',
-        data: 'grant_type=client_credentials&scope=http%3A%2F%2Fwww.thinkministry.com%2Fdataplatform%2Fscopes%2Fall&client_id=event_planner_app&client_secret=zw4%21k2%25vhybzN5%40q%21q2ypP%25cS3HN9wcN'
+        data: ''
     })
         .then(response => response.data)
     const {access_token, expires_in} = data;
