@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Development</title>
+
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+  <!-- <script src="https://weprayallday.com/scripts/calendar-widget.js" async></script>
+  <script src="https://www.google.com/recaptcha/enterprise.js?render=6LcowmAlAAAAAL9doGHROhvbKwaQOn3c0ARTAKzm"></script> -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <!-- <ministry-question-graph ministry-question-id="23"></ministry-question-graph> -->
+  <ministry-question-graph ministry-question-id="1"></ministry-question-graph>
+  <ministry-question-graph ministry-question-id="27"></ministry-question-graph>
+  
+
+  <script src="./main.js"></script>
+  <!-- <script>
+    const requestURL = 'http://localhost:3000/api/widgets';
+
+    const getWidgetScripts = async () => {
+
+      const scripts = await axios({
+      method: 'get',
+      url: `${requestURL}/files`
+      })
+      .then(response => response.data)
+      .catch(err => console.error(err))
+
+      for (const script of scripts) {
+      var scriptDOM = document.createElement('script');
+      scriptDOM.setAttribute('src',`${requestURL}/files/${script}`);
+      document.head.appendChild(scriptDOM);
+      }
+    }
+
+    const getWidgetStyles = async () => {
+
+      const styles = await axios({
+      method: 'get',
+      url: `${requestURL}/styles`
+      })
+      .then(response => response.data)
+      .catch(err => console.error(err))
+
+      for (const style of styles) {
+      var scriptDOM = document.createElement('link');
+      scriptDOM.setAttribute('rel','stylesheet');
+      scriptDOM.setAttribute('href',`${requestURL}/styles/${style}`);
+      document.head.appendChild(scriptDOM);
+      }
+    }
+
+    getWidgetScripts();
+    getWidgetStyles();
+  </script> -->
+</body>
+</html>
