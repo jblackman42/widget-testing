@@ -4,6 +4,7 @@ class MinistryQuestionGraph extends HTMLElement {
 
     this.ministryQuestionID = this.getAttribute('ministry-question-id');
     this.accentColor = '#2c3e50';
+    this.graphColors = ['#3498db','#f1c40f','#e74c3c','#2ecc71','#e67e22','#9b59b6','#1abc9c']
 
     this.draw();
   }
@@ -12,7 +13,7 @@ class MinistryQuestionGraph extends HTMLElement {
     const data = await axios({
         method: 'post',
         url: 'https://my.pureheart.org/ministryplatformapi/oauth/connect/token',
-        data: ''
+        data: 'grant_type=client_credentials&scope=http%3A%2F%2Fwww.thinkministry.com%2Fdataplatform%2Fscopes%2Fall&client_id=event_planner_app&client_secret=zw4%21k2%25vhybzN5%40q%21q2ypP%25cS3HN9wcN'
     })
         .then(response => response.data)
     const {access_token, expires_in} = data;
@@ -81,6 +82,10 @@ class MinistryQuestionGraph extends HTMLElement {
           <button id="period-week-${this.ministryQuestionID}" class="period-week-btn">Weekly</button>
         </div>
 
+        <div class="title-container">
+          <h1 id="graph-title-${this.ministryQuestionID}"></h1>
+        </div>
+
         <div class="graph-row">
           <button id="prev-view-${this.ministryQuestionID}"><i class='fa fa-angle-left'></i></button>
           <div class="graph-slider" id="graph-slider-${this.ministryQuestionID}">
@@ -134,9 +139,12 @@ class MinistryQuestionGraph extends HTMLElement {
     this.periodAnswers = await this.getPeriodAnswers();
     this.monthly = true;
 
-    console.log(this.ministryQuestion);
-    console.log(this.weeklyAnswers);
-    console.log(this.periodAnswers);
+    const graphTitleDOM = document.getElementById(`graph-title-${this.ministryQuestionID}`);
+    graphTitleDOM.textContent = this.ministryQuestion.Question_Title;
+
+    // console.log(this.ministryQuestion);
+    // console.log(this.weeklyAnswers);
+    // console.log(this.periodAnswers);
 
     this.updateCharts()
   }
@@ -144,36 +152,27 @@ class MinistryQuestionGraph extends HTMLElement {
   updateCharts = () => {
     const data = this.monthly ? this.periodAnswers : this.weeklyAnswers;
 
+    const distinctCongregations = [];
 
-    const currChartLabelsMonthly = this.periodAnswers.map(answer => new Date(answer.Fiscal_Period_Start).toLocaleDateString('en-us', {month: 'short', day: 'numeric', year: 'numeric'}));
-    const currChartDataMonthly = this.periodAnswers.map(answer => answer.Numerical_Value);
+    for (const congregation of data) {
+      // Check if the congregation already exists in the distinctCongregations array
+      const existingCongregation = distinctCongregations.find(
+        (c) => c.Congregation_ID === congregation.Congregation_ID
+      );
 
-    const currChartLabelsWeekly = this.weeklyAnswers.map(answer => new Date(answer.Ministry_Week_Start).toLocaleDateString('en-us', {month: 'short', day: 'numeric', year: 'numeric'}));
-    const currChartDataWeekly = this.weeklyAnswers.map(answer => answer.Numerical_Value);
-    
-    const currChartLabels = this.monthly ? currChartLabelsMonthly : currChartLabelsWeekly
-    const currChartData = this.monthly ? currChartDataMonthly : currChartDataWeekly
-
-    const allCongregationIDs = new Set(data.map(item => item.Congregation_ID));
-    const allCongregations = [...new Set(data.map(item => item.Congregation_Name))];
-
-    const dataSets = allCongregations.map(congregation => {
-      return {
-        // label: this.ministryQuestion.Question_Header + ``,
-        label: `${this.ministryQuestion.Question_Header} (${congregation})`,
-        data: data.filter(answer => answer.Congregation_Name == congregation).map(answer => answer.Numerical_Value),
-        fill: false,
-        borderColor: 'red',
-        tension: 0.1
+      // If the congregation doesn't exist, add it to the distinctCongregations array
+      if (!existingCongregation) {
+        distinctCongregations.push({
+          Congregation_ID: congregation.Congregation_ID,
+          Congregation_Name: congregation.Congregation_Name,
+        });
       }
-    })
-    
-    this.chart.data = {
-      labels: currChartLabels,
-      datasets: dataSets
     }
 
-    this.chart.update();
+    distinctCongregations.sort((a, b) => a.Congregation_ID - b.Congregation_ID);
+    // const allCongregationIDs = new Set(data.map(item => item.Congregation_ID));
+    const allCongregationIDs = distinctCongregations.map(congregation => congregation.Congregation_ID);
+    const allCongregations = distinctCongregations.map(congregation => congregation.Congregation_Name);
 
     // table info
 
@@ -184,7 +183,6 @@ class MinistryQuestionGraph extends HTMLElement {
     tableContainerDOM.appendChild(dataTable)
 
     const tableHeaders = [this.monthly ? 'Month' : 'Week'].concat(allCongregations)
-    console.log(tableHeaders)
 
     // Next, create the Map for the date values
     const dateMap = new Map();
@@ -206,7 +204,6 @@ class MinistryQuestionGraph extends HTMLElement {
     });
     // Convert the Map to the desired array format
     let result = Array.from(dateMap, ([date, values]) => ({ date, values }));
-    console.log(allCongregationIDs)
 
     const headerRow = document.createElement('thead');
     tableHeaders.forEach(header => {
@@ -238,6 +235,26 @@ class MinistryQuestionGraph extends HTMLElement {
       // Append the row to the table body
       dataTable.appendChild(row);
     });
+
+
+    const graphLabels = result.map(data => data.date);
+
+    const dataSets = allCongregations.map((congregation, i) => {
+      return {
+        label: `${data[0].Type ?? this.ministryQuestion.Question_Header} (${congregation})`,
+        data: result.map(data => data.values[i].value),
+        fill: false,
+        borderColor: this.graphColors[i],
+        tension: .1
+      }
+    })
+    
+    this.chart.data = {
+      labels: graphLabels,
+      datasets: dataSets
+    }
+
+    this.chart.update();
 
   }
 }
