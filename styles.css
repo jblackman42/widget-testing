@@ -15,7 +15,9 @@ body {
   margin: 1rem auto;
   width: max-content;
 
-  --graph-width: 1200px;
+  /* --graph-width: 1200px; */
+  --graph-width: clamp(16rem, 80vw, 70rem);
+  --title-size: clamp(1.25rem, 2vw, 2rem);
   --background-color: #FFF;
   --background-color-transparent: #FFFFFF88;
   --accent-color: #2c3e50;
@@ -23,21 +25,30 @@ body {
 
 .ministry-graph-container .title-container {
   background-color: var(--background-color);
+  max-width: var(--graph-width);
 }
 
 .ministry-graph-container .title-container h1 {
   text-align: center;
-  font-size: 1.5rem;
-  margin: 0;
-  padding-top: 1rem;
+  font-size: var(--title-size);
+  margin: 0 1rem;
 }
 
-.ministry-graph-container .period-select-container {
+.ministry-graph-container .range-container {
+  display: flex;
+}
+
+.ministry-graph-container .range-container input[type="range"] {
+  width: var(--graph-width);
+  margin: 0 auto;
+}
+
+.ministry-graph-container .graph-type-container {
   display: flex;
   gap: .5rem;
 }
 
-.ministry-graph-container .period-select-container button {
+.ministry-graph-container .graph-type-container button {
   width: 100%;
   font-size: 1rem;
   border: none;
@@ -48,31 +59,21 @@ body {
   background-color: var(--background-color-transparent);
 }
 
-.ministry-graph-container .period-select-container button.active {
+.ministry-graph-container .graph-type-container button.active {
   background-color: var(--background-color);
 }
 
-.ministry-graph-container .graph-row {
+
+.ministry-graph-container .graph-body {
   background-color: var(--background-color);
-  padding: 1rem 0;
+  padding: 1rem;
   border-radius: 0 0 1rem 1rem;
   box-sizing: border-box;
 
-  display: flex;
 }
 
-.ministry-graph-container .graph-row button {
-  font-size: 2rem;
-  font-weight: bold;
-  height: max-content;
-  margin: auto 1rem;
-  border: none;
-  padding: 0;
-  width: 40px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background-color: var(--accent-color);
-  color: white;
+.ministry-graph-container .graph-row {
+  display: flex;
 }
 
 .ministry-graph-container .graph-row .graph-slider {
@@ -86,9 +87,19 @@ body {
 
 .ministry-graph-container .graph-row .graph-slider .slider-body {
   width: var(--graph-width);
-  aspect-ratio: 1.9;
+  aspect-ratio: 2;
   overflow-y: auto;
-  /* padding: 1rem; */
+  box-sizing: border-box;
+}
+
+.ministry-graph-container .graph-row .graph-slider .slider-body h2 {
+  text-align: center;
+}
+
+.ministry-graph-container .graph-row .graph-slider .slider-body .graph-container {
+  width: 100%;
+  aspect-ratio: 2.5;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
@@ -99,6 +110,8 @@ body {
 /* Track */
 .ministry-graph-container .graph-row .graph-slider .slider-body::-webkit-scrollbar-track {
   border-radius: 5px;
+  background-color: #0000000F;
+  box-shadow: 0 0 4px #00000033 inset;
 }
 
 /* Handle */
@@ -138,4 +151,123 @@ body {
 
 .ministry-graph-container .graph-row .graph-slider .slider-body table tr:nth-of-type(odd) {
   background-color: #ecf0f1;
+}
+
+
+
+
+@media screen and (max-width: 768px) {
+  .ministry-graph-container .graph-row button {
+    display: none;
+    visibility: hidden;
+  }
+
+  .ministry-graph-container .graph-row .graph-slider .slider-body .graph-container {
+    aspect-ratio: 1;
+  }
+
+  .ministry-graph-container .graph-row .graph-slider .slider-body.graph {
+    overflow-y: visible;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* double slider css */
+.range-container {
+  width: 100%;
+  margin: 0 auto;
+
+  --height: 1.5em;
+  height: var(--height);
+
+  display: grid;
+  place-items: center;
+}
+
+.range-container .wrapper {
+  position: relative;
+  width: 100%;
+  background-color: #00000022;
+  border-radius: 4px;
+}
+
+.range-container .wrapper .slider-track {
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) 100%)
+}
+
+.range-container .wrapper input[type="range"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 100%;
+  outline: none;
+  position: absolute;
+  margin: auto;
+  top: 0;
+  bottom: 0;
+  background-color: transparent;
+  pointer-events: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 5px;
+}
+
+input[type="range"]::-moz-range-track {
+  -moz-appearance: none;
+  height: 5px;
+}
+
+input[type="range"]::-ms-track {
+  appearance: none;
+  height: 5px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: var(--height);
+  width: var(--height);
+  background-color: var(--accent-color);
+  cursor: pointer;
+  margin-top: -9px;
+  pointer-events: auto;
+  border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-thumb {
+  -webkit-appearance: none;
+  height: var(--height);
+  width: var(--height);
+  cursor: pointer;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+  pointer-events: auto;
+}
+
+input[type="range"]::-ms-thumb {
+  appearance: none;
+  height: var(--height);
+  width: var(--height);
+  cursor: pointer;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+  pointer-events: auto;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  background-color: #ffffff;
+  border: 3px solid var(--accent-color);
 }

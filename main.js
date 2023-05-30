@@ -2,7 +2,9 @@ class MinistryQuestionGraph extends HTMLElement {
   constructor() {
     super();
 
+    
     this.ministryQuestionID = this.getAttribute('ministry-question-id');
+    this.domReferenceID = `${this.ministryQuestionID}-${[...document.querySelectorAll('.ministry-question-graph')].filter(elem => elem.getAttribute('ministry-question-id') == this.ministryQuestionID).length}`
     this.accentColor = '#2c3e50';
     this.graphColors = ['#3498db','#f1c40f','#e74c3c','#2ecc71','#e67e22','#9b59b6','#1abc9c']
 
@@ -13,7 +15,6 @@ class MinistryQuestionGraph extends HTMLElement {
     const data = await axios({
         method: 'post',
         url: 'https://my.pureheart.org/ministryplatformapi/oauth/connect/token',
-        data: ''
     })
         .then(response => response.data)
     const {access_token, expires_in} = data;
@@ -77,58 +78,88 @@ class MinistryQuestionGraph extends HTMLElement {
   draw = () => {
     this.innerHTML = `
       <div class="ministry-graph-container">
-        <div class="period-select-container">
-          <button id="period-month-${this.ministryQuestionID}" class="period-month-btn active">Monthly</button>
-          <button id="period-week-${this.ministryQuestionID}" class="period-week-btn">Weekly</button>
+        <div class="graph-type-container">
+          <button id="type-graph-${this.domReferenceID}" class="type-graph-btn active">Graph</button>
+          <button id="type-chart-${this.domReferenceID}" class="type-chart-btn">Table</button>
         </div>
 
-        <div class="title-container">
-          <h1 id="graph-title-${this.ministryQuestionID}"></h1>
-        </div>
+        <div class="graph-body">
+          <div class="title-container">
+            <h1 id="graph-title-${this.domReferenceID}"></h1>
+          </div>
 
-        <div class="graph-row">
-          <button id="prev-view-${this.ministryQuestionID}"><i class='fa fa-angle-left'></i></button>
-          <div class="graph-slider" id="graph-slider-${this.ministryQuestionID}">
-            <div class="slider-body" id="chart-container-${this.ministryQuestionID}">
-              <canvas id="ministry-graph-${this.ministryQuestionID}"></canvas>
-            </div>
+          <div class="graph-row">
+            <div class="graph-slider" id="graph-slider-${this.domReferenceID}">
+              <div class="slider-body graph">
+                <div class="graph-container" id="chart-container-${this.domReferenceID}">
+                  <canvas class="ministry-question-graph" ministry-question-id="${this.ministryQuestionID}" id="ministry-graph-${this.domReferenceID}"></canvas>
+                </div>
 
-            <div class="slider-body" id="table-container-${this.ministryQuestionID}">
-            
+                <h2 id="date-range-label-${this.domReferenceID}"></h2>
+                <div class="range-container">
+                  <div class="wrapper">
+                      <div class="slider-track" id="slider-track-${this.domReferenceID}"></div>
+                      <input type="range" min="0" max="1" value="0" id="slider-1-${this.domReferenceID}">
+                      <input type="range" min="0" max="1" value="1" id="slider-2-${this.domReferenceID}">
+                  </div>
+                </div>
+              </div>
+
+              <div class="slider-body" id="table-container-${this.domReferenceID}">
+              
+              </div>
             </div>
           </div>
-          <button id="next-view-${this.ministryQuestionID}"><i class='fa fa-angle-right'></i></button>
         </div>
+
       </div>
       
     `
     
-    const ctx = document.getElementById(`ministry-graph-${this.ministryQuestionID}`);
+    const ctx = document.getElementById(`ministry-graph-${this.domReferenceID}`);
     this.chart = new Chart(ctx, {
       type: 'line',
-      data: {}
+      data: {},
+      options: {
+        maintainAspectRatio: false,
+        responsive: true
+      }
     });
 
-    const periodMonthlyBtnDOM = document.querySelector(`#period-month-${this.ministryQuestionID}`);
-    const periodWeeklyBtnDOM = document.querySelector(`#period-week-${this.ministryQuestionID}`);
-    periodMonthlyBtnDOM.onclick = () => {
-      periodMonthlyBtnDOM.classList.add('active');
-      periodWeeklyBtnDOM.classList.remove('active');
-      this.monthly = true;
-      this.updateCharts();
+    const typeGraphBtnDOM = document.querySelector(`#type-graph-${this.domReferenceID}`);
+    const typeChartBtnDOM = document.querySelector(`#type-chart-${this.domReferenceID}`);
+    typeGraphBtnDOM.onclick = () => {
+      typeGraphBtnDOM.classList.add('active');
+      typeChartBtnDOM.classList.remove('active');
+      graphSliderDOM.scrollTo(0,0)
     }
-    periodWeeklyBtnDOM.onclick = () => {
-      periodWeeklyBtnDOM.classList.add('active');
-      periodMonthlyBtnDOM.classList.remove('active');
-      this.monthly = false;
-      this.updateCharts();
+    typeChartBtnDOM.onclick = () => {
+      typeGraphBtnDOM.classList.remove('active');
+      typeChartBtnDOM.classList.add('active');
+      graphSliderDOM.scrollTo(graphSliderDOM.scrollWidth,0)
     }
+    // periodMonthlyBtnDOM.onclick = () => {
+    //   periodMonthlyBtnDOM.classList.add('active');
+    //   periodWeeklyBtnDOM.classList.remove('active');
+    //   this.monthly = true;
+    //   this.updateCharts();
+    // }
+    // periodWeeklyBtnDOM.onclick = () => {
+    //   periodWeeklyBtnDOM.classList.add('active');
+    //   periodMonthlyBtnDOM.classList.remove('active');
+    //   this.monthly = false;
+    //   this.updateCharts();
+    // }
 
-    const graphSliderDOM = document.getElementById(`graph-slider-${this.ministryQuestionID}`);
-    const prevViewBtnDOM = document.getElementById(`prev-view-${this.ministryQuestionID}`);
-    const nextViewBtnDOM = document.getElementById(`next-view-${this.ministryQuestionID}`);
-    prevViewBtnDOM.onclick = () => graphSliderDOM.scrollTo(0,0)
-    nextViewBtnDOM.onclick = () => graphSliderDOM.scrollTo(graphSliderDOM.scrollWidth,0)
+    const graphSliderDOM = document.getElementById(`graph-slider-${this.domReferenceID}`);
+    const prevViewBtnDOM = document.getElementById(`prev-view-${this.domReferenceID}`);
+    const nextViewBtnDOM = document.getElementById(`next-view-${this.domReferenceID}`);
+
+
+    const slider1DOM = document.getElementById(`slider-1-${this.domReferenceID}`);
+    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
+    slider1DOM.oninput = () => this.handleSliderInput(slider1DOM, slider2DOM, -10);
+    slider2DOM.oninput = () => this.handleSliderInput(slider2DOM, slider1DOM, 10);
     
     this.update();
   }
@@ -137,19 +168,19 @@ class MinistryQuestionGraph extends HTMLElement {
     this.ministryQuestion = await this.getMinistryQuestion();
     this.weeklyAnswers = await this.getWeeklyAnswers();
     this.periodAnswers = await this.getPeriodAnswers();
-    this.monthly = true;
+    this.monthly = this.getAttribute('scale') == 'week' ? false : true;
 
-    const graphTitleDOM = document.getElementById(`graph-title-${this.ministryQuestionID}`);
+    const graphTitleDOM = document.getElementById(`graph-title-${this.domReferenceID}`);
     graphTitleDOM.textContent = this.ministryQuestion.Question_Title;
-
-    // console.log(this.ministryQuestion);
-    // console.log(this.weeklyAnswers);
-    // console.log(this.periodAnswers);
-
+    
+    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
+    slider2DOM.max = Infinity;
+    slider2DOM.value = Infinity;
+    
     this.updateCharts()
   }
 
-  updateCharts = () => {
+  updateCharts = (graphStart = 0, graphEnd = Infinity) => {
     const data = this.monthly ? this.periodAnswers : this.weeklyAnswers;
 
     const distinctCongregations = [];
@@ -176,7 +207,7 @@ class MinistryQuestionGraph extends HTMLElement {
 
     // table info
 
-    const tableContainerDOM = document.getElementById(`table-container-${this.ministryQuestionID}`);
+    const tableContainerDOM = document.getElementById(`table-container-${this.domReferenceID}`);
     tableContainerDOM.innerHTML = '';
 
     const dataTable = document.createElement('table')
@@ -237,12 +268,18 @@ class MinistryQuestionGraph extends HTMLElement {
     });
 
 
-    const graphLabels = result.map(data => data.date);
+    // graph stuff
+    const graphResult = result.slice(graphStart, graphEnd);
+
+    const graphLabels = graphResult.map(data => data.date);
+
+    const dateRangeLabelsDOM = document.getElementById(`date-range-label-${this.domReferenceID}`);
+    dateRangeLabelsDOM.textContent = `${graphLabels[0]} - ${graphLabels[graphLabels.length - 1]}`
 
     const dataSets = allCongregations.map((congregation, i) => {
       return {
         label: `${data[0].Type ?? this.ministryQuestion.Question_Header} (${congregation})`,
-        data: result.map(data => data.values[i].value),
+        data: graphResult.map(data => data.values[i].value),
         fill: false,
         borderColor: this.graphColors[i],
         tension: .1
@@ -255,7 +292,29 @@ class MinistryQuestionGraph extends HTMLElement {
     }
 
     this.chart.update();
+    
 
+    // prepare sliders
+    const slider1DOM = document.getElementById(`slider-1-${this.domReferenceID}`);
+    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
+    slider1DOM.max = result.length;
+    slider2DOM.max = result.length;
+  }
+
+  handleSliderInput = (currSlider, otherSlider, gap = 4) => {
+    const slider1DOM = document.getElementById(`slider-1-${this.domReferenceID}`);
+    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
+    const sliderTrackDOM = document.getElementById(`slider-track-${this.domReferenceID}`)
+    
+    if(parseInt(slider2DOM.value) - parseInt(slider1DOM.value) <= Math.abs(gap)){
+      currSlider.value = parseInt(otherSlider.value) + gap;
+    }
+
+    const percent1 = (slider1DOM.value / slider1DOM.max) * 100;
+    const percent2 = (slider2DOM.value / slider2DOM.max) * 100;
+    sliderTrackDOM.style.background = `linear-gradient(to right, #00000000 ${percent1}% , ${this.accentColor} ${percent1}% , ${this.accentColor} ${percent2}%, #00000000 ${percent2}%)`;
+
+    this.updateCharts(parseInt(slider1DOM.value), parseInt(slider2DOM.value))
   }
 }
 
