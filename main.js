@@ -4,49 +4,37 @@ class MinistryQuestionGraph extends HTMLElement {
 
     
     this.ministryQuestionID = this.getAttribute('ministry-question-id');
+    this.monthly = this.getAttribute('scale') == 'week' ? false : true;
+    this.compare = this.getAttribute('compare') ?? 'congregations';
+
     this.domReferenceID = `${this.ministryQuestionID}-${[...document.querySelectorAll('.ministry-question-graph')].filter(elem => elem.getAttribute('ministry-question-id') == this.ministryQuestionID).length}`
     this.accentColor = '#2c3e50';
-    this.graphColors = ['#3498db','#f1c40f','#e74c3c','#2ecc71','#e67e22','#9b59b6','#1abc9c']
+    this.graphColors = ['#3498db','#f1c40f','#e74c3c','#2ecc71','#e67e22','#9b59b6','#1abc9c'];
+
+    this.requestURL = 'http://localhost:3000/api/widgets'
+    // this.requestURL = 'https://phc.events/api/widgets'
 
     this.draw();
-  }
-
-  getAccessToken = async () => {
-    const data = await axios({
-        method: 'post',
-        url: 'https://my.pureheart.org/ministryplatformapi/oauth/connect/token',
-    })
-        .then(response => response.data)
-    const {access_token, expires_in} = data;
-    const expiresDate = new Date(new Date().getTime() + (expires_in * 1000)).toISOString()
-    return access_token;
   }
 
   getMinistryQuestion = async () => {
     return await axios({
       method: 'get',
-      url: `https://my.pureheart.org/ministryplatformapi/tables/Ministry_Questions/${this.ministryQuestionID}`,
-      headers: {
-        'Authorization': `Bearer ${await this.getAccessToken()}`,
-        'Content-Type': 'Application/JSON'
+      url: `${this.requestURL}/ministry-question`,
+      params: {
+        ministryQuestionID: this.ministryQuestionID
       }
     })
-      .then(response => response.data[0])
+      .then(response => response.data)
       .catch(err => console.error(err))
   }
 
   getWeeklyAnswers = async () => {
     return await axios({
       method: 'get',
-      url: `https://my.pureheart.org/ministryplatformapi/tables/Ministry_Answers`,
+      url: `${this.requestURL}/ministry-answers-weekly`,
       params: {
-        $filter: `Ministry_Question_ID = ${this.ministryQuestionID}`,
-        $select: `Ministry_Week_ID_Table.[Ministry_Week_Start], Ministry_Answer_ID, Ministry_Answers.[Ministry_Week_ID], Ministry_Question_ID, Numerical_Value, Ministry_Answers.[Congregation_ID], Congregation_ID_Table.[Congregation_Name], Ministry_ID, Program_ID, Type`,
-        $orderby: `Ministry_Week_ID_Table.[Ministry_Week_Start]`
-      },
-      headers: {
-        'Authorization': `Bearer ${await this.getAccessToken()}`,
-        'Content-Type': 'Application/JSON'
+        ministryQuestionID: this.ministryQuestionID
       }
     })
     .then(response => response.data)
@@ -56,15 +44,9 @@ class MinistryQuestionGraph extends HTMLElement {
   getPeriodAnswers = async () => {
     return await axios({
       method: 'get',
-      url: `https://my.pureheart.org/ministryplatformapi/tables/Fiscal_Period_Answers`,
+      url: `${this.requestURL}/ministry-answers-monthly`,
       params: {
-        $filter: `Ministry_Question_ID = ${this.ministryQuestionID}`,
-        $select: `Fiscal_Period_ID_Table.[Fiscal_Period_Start], Fiscal_Period_Answer_ID, Fiscal_Period_Answers.[Fiscal_Period_ID], Ministry_Question_ID, Numerical_Value, Fiscal_Period_Answers.[Congregation_ID], Congregation_ID_Table.[Congregation_Name], Ministry_ID, Program_ID, Type`,
-        $orderby: `Fiscal_Period_ID_Table.[Fiscal_Period_Start]`
-      },
-      headers: {
-        'Authorization': `Bearer ${await this.getAccessToken()}`,
-        'Content-Type': 'Application/JSON'
+        ministryQuestionID: this.ministryQuestionID
       }
     })
     .then(response => response.data)
@@ -96,7 +78,7 @@ class MinistryQuestionGraph extends HTMLElement {
                 </div>
 
                 <h2 id="date-range-label-${this.domReferenceID}"></h2>
-                <div class="range-container">
+                <div class="range-container" id="range-container-${this.domReferenceID}">
                   <div class="wrapper">
                       <div class="slider-track" id="slider-track-${this.domReferenceID}"></div>
                       <input type="range" min="0" max="1" value="0" id="slider-1-${this.domReferenceID}">
@@ -105,7 +87,7 @@ class MinistryQuestionGraph extends HTMLElement {
                 </div>
               </div>
 
-              <div class="slider-body" id="table-container-${this.domReferenceID}">
+              <div class="slider-body table" id="table-container-${this.domReferenceID}">
               
               </div>
             </div>
@@ -138,28 +120,44 @@ class MinistryQuestionGraph extends HTMLElement {
       typeChartBtnDOM.classList.add('active');
       graphSliderDOM.scrollTo(graphSliderDOM.scrollWidth,0)
     }
-    // periodMonthlyBtnDOM.onclick = () => {
-    //   periodMonthlyBtnDOM.classList.add('active');
-    //   periodWeeklyBtnDOM.classList.remove('active');
-    //   this.monthly = true;
-    //   this.updateCharts();
-    // }
-    // periodWeeklyBtnDOM.onclick = () => {
-    //   periodWeeklyBtnDOM.classList.add('active');
-    //   periodMonthlyBtnDOM.classList.remove('active');
-    //   this.monthly = false;
-    //   this.updateCharts();
-    // }
 
     const graphSliderDOM = document.getElementById(`graph-slider-${this.domReferenceID}`);
-    const prevViewBtnDOM = document.getElementById(`prev-view-${this.domReferenceID}`);
-    const nextViewBtnDOM = document.getElementById(`next-view-${this.domReferenceID}`);
-
 
     const slider1DOM = document.getElementById(`slider-1-${this.domReferenceID}`);
     const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
-    slider1DOM.oninput = () => this.handleSliderInput(slider1DOM, slider2DOM, -10);
-    slider2DOM.oninput = () => this.handleSliderInput(slider2DOM, slider1DOM, 10);
+    slider1DOM.oninput = () => this.handleSliderInput(slider1DOM, slider2DOM, -1);
+    slider2DOM.oninput = () => this.handleSliderInput(slider2DOM, slider1DOM, 1);
+
+    // initialize touch inputs
+    let touchStartX = null;
+    const threshold = 100;
+    const excludedElement = document.getElementById(`range-container-${this.domReferenceID}`);
+    graphSliderDOM.addEventListener('touchstart', (event) => {
+      if (!excludedElement.contains(event.target)) {
+        touchStartX = event.changedTouches[0].clientX;
+      } else {
+        touchStartX = null;
+      }
+    }, false);
+    graphSliderDOM.addEventListener('touchend', (event) => {
+      let touchEndX = event.changedTouches[0].clientX;
+      handleSwipe(touchStartX, touchEndX);
+    }, false);
+
+    const handleSwipe = (touchStartX, touchEndX) => {
+      let difference = touchStartX - touchEndX;
+      if (Math.abs(difference) >= threshold) {
+        if (touchStartX < touchEndX) {
+          typeGraphBtnDOM.classList.add('active');
+          typeChartBtnDOM.classList.remove('active');
+          graphSliderDOM.scrollTo(0,0)
+        } else {
+          typeGraphBtnDOM.classList.remove('active');
+          typeChartBtnDOM.classList.add('active');
+          graphSliderDOM.scrollTo(graphSliderDOM.scrollWidth,0)
+        }
+      }
+    }
     
     this.update();
   }
@@ -168,63 +166,29 @@ class MinistryQuestionGraph extends HTMLElement {
     this.ministryQuestion = await this.getMinistryQuestion();
     this.weeklyAnswers = await this.getWeeklyAnswers();
     this.periodAnswers = await this.getPeriodAnswers();
-    this.monthly = this.getAttribute('scale') == 'week' ? false : true;
 
-    const graphTitleDOM = document.getElementById(`graph-title-${this.domReferenceID}`);
-    graphTitleDOM.textContent = this.ministryQuestion.Question_Title;
-    
-    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
-    slider2DOM.max = Infinity;
-    slider2DOM.value = Infinity;
-    
-    this.updateCharts()
-  }
+    this.data = this.monthly ? this.periodAnswers : this.weeklyAnswers;
 
-  updateCharts = (graphStart = 0, graphEnd = Infinity) => {
-    const data = this.monthly ? this.periodAnswers : this.weeklyAnswers;
-
-    const distinctCongregations = [];
-
-    for (const congregation of data) {
-      // Check if the congregation already exists in the distinctCongregations array
-      const existingCongregation = distinctCongregations.find(
-        (c) => c.Congregation_ID === congregation.Congregation_ID
-      );
-
-      // If the congregation doesn't exist, add it to the distinctCongregations array
-      if (!existingCongregation) {
-        distinctCongregations.push({
+    this.distinctCongregations = this.data.reduce((acc, congregation) => {
+      if (acc.findIndex(c => c.Congregation_ID === congregation.Congregation_ID) === -1) {
+        acc.push({
           Congregation_ID: congregation.Congregation_ID,
           Congregation_Name: congregation.Congregation_Name,
         });
       }
-    }
-
-    distinctCongregations.sort((a, b) => a.Congregation_ID - b.Congregation_ID);
-    // const allCongregationIDs = new Set(data.map(item => item.Congregation_ID));
-    const allCongregationIDs = distinctCongregations.map(congregation => congregation.Congregation_ID);
-    const allCongregations = distinctCongregations.map(congregation => congregation.Congregation_Name);
-
-    // table info
-
-    const tableContainerDOM = document.getElementById(`table-container-${this.domReferenceID}`);
-    tableContainerDOM.innerHTML = '';
-
-    const dataTable = document.createElement('table')
-    tableContainerDOM.appendChild(dataTable)
-
-    const tableHeaders = [this.monthly ? 'Month' : 'Week'].concat(allCongregations)
+      return acc;
+    }, []).sort((a, b) => a.Congregation_ID - b.Congregation_ID);
 
     // Next, create the Map for the date values
     const dateMap = new Map();
 
-    data.forEach((item) => {
+    this.data.forEach((item) => {
       let date = this.formatDate(item.Ministry_Week_Start ?? item.Fiscal_Period_Start);
 
       // check if the date is already present in the Map
       if (!dateMap.has(date)) {
         // Initialize the values array with an object for each congregation, defaulting the value to 0
-        dateMap.set(date, Array.from(allCongregationIDs, id => ({ congregationId: id, value: 0 })));
+        dateMap.set(date, Array.from(this.distinctCongregations.map(congregation => congregation.Congregation_ID), id => ({ congregationId: id, value: 0 })));
       }
 
       // Find the object for this congregation and update the value
@@ -234,7 +198,35 @@ class MinistryQuestionGraph extends HTMLElement {
       }
     });
     // Convert the Map to the desired array format
-    let result = Array.from(dateMap, ([date, values]) => ({ date, values }));
+    const result = Array.from(dateMap, ([date, values]) => ({ date, values }));
+
+    this.result = result;
+
+
+
+    // prepare sliders
+    const slider1DOM = document.getElementById(`slider-1-${this.domReferenceID}`);
+    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
+    slider1DOM.max = this.result.length;
+    slider2DOM.max = this.result.length;
+    slider2DOM.value = slider2DOM.max;
+
+    this.updateCharts();
+  }
+
+  updateCharts = (graphStart = 0, graphEnd = Infinity) => {
+    const congregationNames = this.distinctCongregations.map(congregation => congregation.Congregation_Name);
+
+    const graphTitleDOM = document.getElementById(`graph-title-${this.domReferenceID}`);
+    graphTitleDOM.textContent = this.ministryQuestion.Question_Title;
+
+    const tableContainerDOM = document.getElementById(`table-container-${this.domReferenceID}`);
+    tableContainerDOM.innerHTML = '';
+
+    const dataTable = document.createElement('table')
+    tableContainerDOM.appendChild(dataTable)
+
+    const tableHeaders = [this.monthly ? 'Month' : 'Week'].concat(congregationNames);
 
     const headerRow = document.createElement('thead');
     tableHeaders.forEach(header => {
@@ -245,7 +237,7 @@ class MinistryQuestionGraph extends HTMLElement {
     dataTable.appendChild(headerRow)
     
     // Iterate over each entry in the result array
-    result.forEach((entry) => {
+    this.result.forEach((entry) => {
       // Create a new row element
       let row = document.createElement('tr');
       
@@ -268,37 +260,92 @@ class MinistryQuestionGraph extends HTMLElement {
     });
 
 
-    // graph stuff
-    const graphResult = result.slice(graphStart, graphEnd);
+    // CREATE GRAPH BY CONGREGATION
+    const graphResult = this.result.slice(graphStart, graphEnd);
 
     const graphLabels = graphResult.map(data => data.date);
 
     const dateRangeLabelsDOM = document.getElementById(`date-range-label-${this.domReferenceID}`);
     dateRangeLabelsDOM.textContent = `${graphLabels[0]} - ${graphLabels[graphLabels.length - 1]}`
 
-    const dataSets = allCongregations.map((congregation, i) => {
+    const dataSets = congregationNames.map((congregation, i) => {
       return {
-        label: `${data[0].Type ?? this.ministryQuestion.Question_Header} (${congregation})`,
+        label: `${this.ministryQuestion.Question_Header} (${congregation})`,
         data: graphResult.map(data => data.values[i].value),
         fill: false,
         borderColor: this.graphColors[i],
         tension: .1
       }
     })
+
+
+
+    // CREATE GRAPH BY YEAR
+    const dataByYear = [];
+    let currYearData = [];
     
-    this.chart.data = {
-      labels: graphLabels,
-      datasets: dataSets
+    graphResult.forEach((data, i) => {
+      const { date, values } = data;
+    
+      const currYear = new Date(date).getFullYear();
+      const prevYear = i > 0 ? new Date(graphResult[i - 1].date).getFullYear() : null;
+      
+      // if it's a new year or the first element
+      if (i === 0 || currYear !== prevYear) {
+        // if it's not the first element, push the current year data into dataByYear
+        if (i !== 0) {
+          dataByYear.push({
+            year: currYear,
+            data: currYearData
+          });
+        }
+        // start a new currYearData for the new year
+        currYearData = [];
+      }
+    
+      // push the data object into currYearData
+      currYearData.push(values.reduce((accum, val) => val.value + accum, 0));
+
+      if (i == graphResult.length-1) {
+        // push the last year's data
+        dataByYear.push({
+          year: currYear,
+          data: currYearData
+        });
+      }
+    });
+
+    const labelsByYear = this.monthly ? [...new Set(graphResult.map(data => new Date(data.date).toLocaleString('default', { month: 'short' })))] : Array.from({length: Math.max(...dataByYear.map(dataset => dataset.data.length))}, (_, i) => `week ${i + 1}`)
+
+    const dataSetsByYear = dataByYear.map((dataset, i) => {
+      const { year, data } = dataset;
+      return {
+        label: year,
+        data: data,
+        fill: false,
+        borderColor: this.graphColors[i],
+        tension: .1
+      }
+    })
+
+    if (this.compare == 'years') {
+      this.chart.data = {
+        labels: labelsByYear,
+        datasets: dataSetsByYear
+      }
+    } else {
+      this.chart.data = {
+        labels: graphLabels,
+        datasets: dataSets
+      }
     }
+    
 
     this.chart.update();
+
     
 
-    // prepare sliders
-    const slider1DOM = document.getElementById(`slider-1-${this.domReferenceID}`);
-    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
-    slider1DOM.max = result.length;
-    slider2DOM.max = result.length;
+    tableContainerDOM.style.maxHeight = `${document.getElementById(`graph-slider-${this.domReferenceID}`).offsetHeight}px`;
   }
 
   handleSliderInput = (currSlider, otherSlider, gap = 4) => {
