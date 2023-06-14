@@ -11,7 +11,7 @@ class MinistryQuestionGraph extends HTMLElement {
     this.accentColor = '#2c3e50';
     this.graphColors = ['#3498db','#f1c40f','#e74c3c','#2ecc71','#e67e22','#9b59b6','#1abc9c'];
 
-    this.requestURL = 'http://localhost:3000/api/widgets'
+    this.requestURL = 'http://10.13.13.39:3000/api/widgets'
     // this.requestURL = 'https://phc.events/api/widgets'
 
     this.draw();
@@ -77,8 +77,14 @@ class MinistryQuestionGraph extends HTMLElement {
                   <canvas class="ministry-question-graph" ministry-question-id="${this.ministryQuestionID}" id="ministry-graph-${this.domReferenceID}"></canvas>
                 </div>
 
-                <h2 id="date-range-label-${this.domReferenceID}"></h2>
-                <div class="range-container" id="range-container-${this.domReferenceID}">
+                <div class="range-header">
+                  <h2 id="date-range-label-${this.domReferenceID}" ${this.compare == 'years' ? 'style="display: none; visibility: hidden;"' : ''}></h2>
+                  <button class="range-filter-btn" id="all-btn-${this.domReferenceID}">All</button>
+                  <button class="range-filter-btn" id="year-btn-${this.domReferenceID}">1 Yr</button>
+                  <button class="range-filter-btn" id="month-btn-${this.domReferenceID}">1 M</button>
+                  <button class="range-filter-btn" id="ytd-btn-${this.domReferenceID}">YTD</button>
+                </div>
+                <div class="range-container" id="range-container-${this.domReferenceID}" ${this.compare == 'years' ? 'style="display: none; visibility: hidden;"' : ''}>
                   <div class="wrapper">
                       <div class="slider-track" id="slider-track-${this.domReferenceID}"></div>
                       <input type="range" min="0" max="1" value="0" id="slider-1-${this.domReferenceID}">
@@ -127,6 +133,34 @@ class MinistryQuestionGraph extends HTMLElement {
     const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
     slider1DOM.oninput = () => this.handleSliderInput(slider1DOM, slider2DOM, -1);
     slider2DOM.oninput = () => this.handleSliderInput(slider2DOM, slider1DOM, 1);
+
+    const allFilterBtnDOM = document.getElementById(`all-btn-${this.domReferenceID}`);
+    const yearFilterBtnDOM = document.getElementById(`year-btn-${this.domReferenceID}`);
+    const monthFilterBtnDOM = document.getElementById(`month-btn-${this.domReferenceID}`);
+    const ytdFilterBtnDOM = document.getElementById(`ytd-btn-${this.domReferenceID}`);
+    allFilterBtnDOM.onclick = () => this.handleRangUpdate(date => date)
+    yearFilterBtnDOM.onclick = () => this.handleRangUpdate(date => {
+      const today = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
+      today.setMonth(today.getMonth() + 1); // Set the date to next month
+      today.setDate(0); // Set the date to the last day of the previous month (which is this month)
+      
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(today.getFullYear() - 1);
+      oneYearAgo.setMonth(today.getMonth() - 1);
+      const currDate = new Date(date);
+      return currDate >= oneYearAgo && currDate <= today;
+    })
+    monthFilterBtnDOM.onclick = () => this.handleRangUpdate(date => {
+      const today = new Date();
+      today.setMonth(today.getMonth() + 1); // Set the date to next month
+      today.setDate(0); // Set the date to the last day of the previous month (which is this month)
+      
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(today.getMonth() - (this.monthly ? 2 : 1));
+      const currDate = new Date(date);
+      return currDate >= oneMonthAgo && currDate <= today;
+    })
+    ytdFilterBtnDOM.onclick = () => this.handleRangUpdate(date => new Date(date).getFullYear() == new Date().getFullYear())
 
     // initialize touch inputs
     let touchStartX = null;
@@ -223,10 +257,93 @@ class MinistryQuestionGraph extends HTMLElement {
     const tableContainerDOM = document.getElementById(`table-container-${this.domReferenceID}`);
     tableContainerDOM.innerHTML = '';
 
-    const dataTable = document.createElement('table')
-    tableContainerDOM.appendChild(dataTable)
+    const dataTable = document.createElement('table');
+    tableContainerDOM.appendChild(dataTable);
 
-    const tableHeaders = [this.monthly ? 'Month' : 'Week'].concat(congregationNames);
+
+
+    if (this.compare == 'years') {
+      // CREATE GRAPH BY YEAR
+      const dataByYear = [];
+      let currYearData = [];
+      
+      this.result.forEach((data, i) => {
+        const { date, values } = data;
+      
+        const currYear = new Date(date).getFullYear();
+        const prevYear = i > 0 ? new Date(this.result[i - 1].date).getFullYear() : null;
+  
+        if (i == 0) {
+          currYearData = Array.from({length: new Date(date).getMonth()}, () => null)
+        } else if (currYear !== prevYear) {
+          dataByYear.push({
+            year: prevYear,
+            data: currYearData
+          });
+          currYearData = [];
+        }
+        currYearData.push(values.reduce((accum, val) => Math.round(((val.value + accum) + Number.EPSILON) * 100) / 100, 0));
+  
+        if (i == this.result.length-1) {
+          // push the last year's data
+          dataByYear.push({
+            year: currYear,
+            data: currYearData
+          });
+        }
+      });
+  
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+      const labelsByYear = this.monthly ? Array.from({length: 12}, (_,i)=>months[i]) : Array.from({length: Math.max(...dataByYear.map(dataset => dataset.data.length))}, (_, i) => `week ${i + 1}`)
+  
+      const dataSetsByYear = dataByYear.map((dataset, i) => {
+        const { year, data } = dataset;
+        return {
+          label: year,
+          data: data,
+          fill: false,
+          borderColor: this.graphColors[i],
+          tension: .1
+        }
+      })
+
+      this.chart.data = {
+        labels: labelsByYear,
+        datasets: dataSetsByYear
+      }
+
+    } else if (this.compare == 'congregations') {
+      // CREATE GRAPH BY CONGREGATION
+      this.allLabels = this.result.map(data => data.date);
+      const graphResult = this.result.slice(graphStart, graphEnd);
+  
+      const graphLabels = graphResult.map(data => data.date);
+  
+      const dateRangeLabelsDOM = document.getElementById(`date-range-label-${this.domReferenceID}`);
+      dateRangeLabelsDOM.textContent = `${graphLabels[0]} - ${graphLabels[graphLabels.length - 1]}`
+  
+      const dataSets = congregationNames.map((congregation, i) => {
+        return {
+          label: `${this.ministryQuestion.Question_Header} (${congregation})`,
+          data: graphResult.map(data => data.values[i].value),
+          fill: false,
+          borderColor: this.graphColors[i],
+          tension: .1
+        }
+      })
+
+      this.chart.data = {
+        labels: graphLabels,
+        datasets: dataSets
+      }
+
+    } else {
+      console.log('you have failed this city!')
+    }
+
+    const { datasets, labels } = this.chart.data;
+    const tableHeaders = [this.monthly ? 'Month' : 'Week'].concat(datasets.map(dataset => dataset.label));
 
     const headerRow = document.createElement('thead');
     tableHeaders.forEach(header => {
@@ -235,23 +352,23 @@ class MinistryQuestionGraph extends HTMLElement {
       headerRow.appendChild(headerCell)
     })
     dataTable.appendChild(headerRow)
+
+    // console.log(this.result)
     
     // Iterate over each entry in the result array
-    this.result.forEach((entry) => {
+    labels.forEach((label, i) => {
       // Create a new row element
       let row = document.createElement('tr');
       
       // Add a cell for the date
       let dateCell = document.createElement('td');
-      dateCell.textContent = entry.date;
+      dateCell.textContent = label;
       row.appendChild(dateCell);
-      
       // Iterate over the values array
-      entry.values.forEach((valueObj) => {
+      datasets.forEach((dataset) => {
         // Add a cell for each value
         let valueCell = document.createElement('td');
-        // valueCell.textContent = `ID: ${valueObj.congregationId}, Value: ${valueObj.value}`;
-        valueCell.textContent = valueObj.value;
+        valueCell.textContent = dataset.data[i];
         row.appendChild(valueCell);
       });
       
@@ -260,90 +377,7 @@ class MinistryQuestionGraph extends HTMLElement {
     });
 
 
-    // CREATE GRAPH BY CONGREGATION
-    const graphResult = this.result.slice(graphStart, graphEnd);
-
-    const graphLabels = graphResult.map(data => data.date);
-
-    const dateRangeLabelsDOM = document.getElementById(`date-range-label-${this.domReferenceID}`);
-    dateRangeLabelsDOM.textContent = `${graphLabels[0]} - ${graphLabels[graphLabels.length - 1]}`
-
-    const dataSets = congregationNames.map((congregation, i) => {
-      return {
-        label: `${this.ministryQuestion.Question_Header} (${congregation})`,
-        data: graphResult.map(data => data.values[i].value),
-        fill: false,
-        borderColor: this.graphColors[i],
-        tension: .1
-      }
-    })
-
-
-
-    // CREATE GRAPH BY YEAR
-    const dataByYear = [];
-    let currYearData = [];
-    
-    graphResult.forEach((data, i) => {
-      const { date, values } = data;
-    
-      const currYear = new Date(date).getFullYear();
-      const prevYear = i > 0 ? new Date(graphResult[i - 1].date).getFullYear() : null;
-      
-      // if it's a new year or the first element
-      if (i === 0 || currYear !== prevYear) {
-        // if it's not the first element, push the current year data into dataByYear
-        if (i !== 0) {
-          dataByYear.push({
-            year: currYear,
-            data: currYearData
-          });
-        }
-        // start a new currYearData for the new year
-        currYearData = [];
-      }
-    
-      // push the data object into currYearData
-      currYearData.push(values.reduce((accum, val) => val.value + accum, 0));
-
-      if (i == graphResult.length-1) {
-        // push the last year's data
-        dataByYear.push({
-          year: currYear,
-          data: currYearData
-        });
-      }
-    });
-
-    const labelsByYear = this.monthly ? [...new Set(graphResult.map(data => new Date(data.date).toLocaleString('default', { month: 'short' })))] : Array.from({length: Math.max(...dataByYear.map(dataset => dataset.data.length))}, (_, i) => `week ${i + 1}`)
-
-    const dataSetsByYear = dataByYear.map((dataset, i) => {
-      const { year, data } = dataset;
-      return {
-        label: year,
-        data: data,
-        fill: false,
-        borderColor: this.graphColors[i],
-        tension: .1
-      }
-    })
-
-    if (this.compare == 'years') {
-      this.chart.data = {
-        labels: labelsByYear,
-        datasets: dataSetsByYear
-      }
-    } else {
-      this.chart.data = {
-        labels: graphLabels,
-        datasets: dataSets
-      }
-    }
-    
-
-    this.chart.update();
-
-    
+    this.chart.update();    
 
     tableContainerDOM.style.maxHeight = `${document.getElementById(`graph-slider-${this.domReferenceID}`).offsetHeight}px`;
   }
@@ -362,6 +396,24 @@ class MinistryQuestionGraph extends HTMLElement {
     sliderTrackDOM.style.background = `linear-gradient(to right, #00000000 ${percent1}% , ${this.accentColor} ${percent1}% , ${this.accentColor} ${percent2}%, #00000000 ${percent2}%)`;
 
     this.updateCharts(parseInt(slider1DOM.value), parseInt(slider2DOM.value))
+  }
+
+
+  handleRangUpdate = (filterFunction) => {
+    if (!this.allLabels) return;
+    
+    const slider1DOM = document.getElementById(`slider-1-${this.domReferenceID}`);
+    const slider2DOM = document.getElementById(`slider-2-${this.domReferenceID}`);
+
+    const currYearLabels = this.allLabels.filter(filterFunction)
+    const yearStartIndex = this.allLabels.indexOf(currYearLabels[0]);
+    const yearEndIndex = this.allLabels.indexOf(currYearLabels[currYearLabels.length-1]) + 1;
+
+    slider1DOM.value = yearStartIndex;
+    slider2DOM.value = yearEndIndex;
+    this.handleSliderInput(slider1DOM, slider2DOM, -1);
+    
+    this.updateCharts(yearStartIndex, yearEndIndex)
   }
 }
 

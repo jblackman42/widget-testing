@@ -89,13 +89,33 @@ body {
 .graph-body .graph-row .graph-slider .slider-body.table {
   /* gets updated in js */
   max-height: 0px;
-  overflow-y: auto;
+  overflow: auto;
 }
 
+.graph-body .graph-row .graph-slider .slider-body .range-header {
+  display: flex;
+  justify-content: space-between;
+  margin-block: 1rem;
+}
 .graph-body .graph-row .graph-slider .slider-body h2 {
-  margin: 0;
-  margin-top: 2rem;
+  margin: auto 0;
+  margin-right: auto;
   font-size: var(--label-size);
+}
+.graph-body .graph-row .graph-slider .slider-body .range-filter-btn {
+  cursor: pointer;
+  font-size: 16px;
+  padding: .33rem 1rem;
+  margin-right: 1rem;
+  border-radius: .5rem;
+
+  border: 2px solid var(--accent-color);
+  background-color: transparent;
+  font-weight: bold;
+}
+.graph-body .graph-row .graph-slider .slider-body .range-filter-btn:active {
+  color: white;
+  background-color: var(--accent-color);
 }
 
 .graph-body .graph-row .graph-slider .slider-body .graph-container {
@@ -137,6 +157,7 @@ body {
 
 table {
   width: 100%;
+  max-height: 100%;
   border-collapse: collapse;
   font-size: 1rem;
   position: relative;
