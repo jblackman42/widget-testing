@@ -77,8 +77,8 @@ class MinistryQuestionGraph extends HTMLElement {
                   <canvas class="ministry-question-graph" ministry-question-id="${this.ministryQuestionID}" id="ministry-graph-${this.domReferenceID}"></canvas>
                 </div>
 
-                <div class="range-header">
-                  <h2 id="date-range-label-${this.domReferenceID}" ${this.compare == 'years' ? 'style="display: none; visibility: hidden;"' : ''}></h2>
+                <div class="range-header" ${this.compare == 'years' ? 'style="display: none; visibility: hidden;"' : ''}>
+                  <h2 id="date-range-label-${this.domReferenceID}"></h2>
                   <button class="range-filter-btn" id="all-btn-${this.domReferenceID}">All</button>
                   <button class="range-filter-btn" id="year-btn-${this.domReferenceID}">1 Yr</button>
                   <button class="range-filter-btn" id="month-btn-${this.domReferenceID}">1 M</button>
