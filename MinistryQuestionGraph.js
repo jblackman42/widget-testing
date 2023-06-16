@@ -132,6 +132,7 @@ class MinistryQuestionGraphV2 extends HTMLElement {
       <div class="graph-type-container">
         <button id="type-graph-${this.domReferenceID}" class="type-graph-btn active">Graph</button>
         <button id="type-chart-${this.domReferenceID}" class="type-chart-btn">Table</button>
+        <button id="type-options-${this.domReferenceID}" class="type-options-btn">Options</button>
       </div>
 
       <div class="graph-body">
@@ -167,6 +168,11 @@ class MinistryQuestionGraphV2 extends HTMLElement {
             <div class="slider-body table" id="table-container-${this.domReferenceID}">
             
             </div>
+
+            <div class="slider-body options" id="options-container-${this.domReferenceID}">
+              <form>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -178,14 +184,23 @@ class MinistryQuestionGraphV2 extends HTMLElement {
     const graphSliderDOM = this.shadowRoot.getElementById(`graph-slider-${this.domReferenceID}`);
     const typeGraphBtnDOM = this.shadowRoot.querySelector(`#type-graph-${this.domReferenceID}`);
     const typeChartBtnDOM = this.shadowRoot.querySelector(`#type-chart-${this.domReferenceID}`);
+    const typeOptionsBtnDOM = this.shadowRoot.querySelector(`#type-options-${this.domReferenceID}`);
     typeGraphBtnDOM.onclick = () => {
       typeGraphBtnDOM.classList.add('active');
       typeChartBtnDOM.classList.remove('active');
+      typeOptionsBtnDOM.classList.remove('active');
       graphSliderDOM.scrollTo(0,0)
     }
     typeChartBtnDOM.onclick = () => {
       typeGraphBtnDOM.classList.remove('active');
       typeChartBtnDOM.classList.add('active');
+      typeOptionsBtnDOM.classList.remove('active');
+      graphSliderDOM.scrollTo((graphSliderDOM.scrollWidth / 3) + 10,0) //divided into number of tabs, plus 10px for padding
+    }
+    typeOptionsBtnDOM.onclick = () => {
+      typeGraphBtnDOM.classList.remove('active');
+      typeChartBtnDOM.classList.remove('active');
+      typeOptionsBtnDOM.classList.add('active');
       graphSliderDOM.scrollTo(graphSliderDOM.scrollWidth,0)
     }
 
@@ -317,16 +332,19 @@ class MinistryQuestionGraphV2 extends HTMLElement {
     graphTitleDOM.textContent = this.ministryQuestion.Question_Title;
 
     const tableContainerDOM = this.shadowRoot.getElementById(`table-container-${this.domReferenceID}`);
+    const optionsContainerDOM = this.shadowRoot.getElementById(`options-container-${this.domReferenceID}`);
     tableContainerDOM.innerHTML = '';
 
     const dataTable = document.createElement('table');
     tableContainerDOM.appendChild(dataTable);
 
     // create different graphs based on compare parameter
-    if (this.compare == 'years') {
-      this.createYearsChart();
-    } else if (this.compare == 'congregations') {
-      this.createCongregationsChart(graphStart, graphEnd);
+    if (this.compare == 'years' && this.chartType == 'line') {
+      this.createYearLinesChart();
+    } else if (this.compare == 'congregations' && this.chartType == 'line') {
+      this.createCongregationsLineChart(graphStart, graphEnd);
+    } else if (this.chartType == 'pie' || this.chartType == 'doughnut') {
+      this.createPieChart(graphStart, graphEnd);
     }
 
     // CREATE TABLE BASED ON CHART DATA
@@ -369,9 +387,10 @@ class MinistryQuestionGraphV2 extends HTMLElement {
 
     // set maxheight of table so it matches the chart
     tableContainerDOM.style.maxHeight = `${this.shadowRoot.getElementById(`graph-slider-${this.domReferenceID}`).offsetHeight}px`;
+    optionsContainerDOM.style.maxHeight = `${this.shadowRoot.getElementById(`graph-slider-${this.domReferenceID}`).offsetHeight}px`;
   }
 
-  createYearsChart = () => {
+  createYearsLineChart = () => {
     // CREATE GRAPH BY YEAR
     const dataByYear = [];
     let currYearData = [];
@@ -423,7 +442,7 @@ class MinistryQuestionGraphV2 extends HTMLElement {
     }
   }
 
-  createCongregationsChart = (graphStart, graphEnd) => {
+  createCongregationsLineChart = (graphStart, graphEnd) => {
     // CREATE GRAPH BY CONGREGATION
     this.allLabels = this.result.map(data => data.date);
     const graphResult = this.result.slice(graphStart, graphEnd);
@@ -448,6 +467,28 @@ class MinistryQuestionGraphV2 extends HTMLElement {
       datasets: dataSets
     }
 
+  }
+
+  createPieChart = (graphStart, graphEnd) => {
+    const graphResult = this.result.slice(graphStart, graphEnd);
+
+    const graphLabels = graphResult.map(data => data.date);
+
+    const dateRangeLabelsDOM = this.shadowRoot.getElementById(`date-range-label-${this.domReferenceID}`);
+    dateRangeLabelsDOM.textContent = `${graphLabels[0]} - ${graphLabels[graphLabels.length - 1]}`
+
+    const congregationSums = this.congregationNames.map((name, i) => {
+      return graphResult.reduce((accum, val) => Math.round(((val.values[i].value + accum) + Number.EPSILON) * 100) / 100, 0)
+    })
+    console.log(congregationSums)
+    this.chart.data = {
+      labels: this.congregationNames,
+      datasets: [{
+        label: `${this.ministryQuestion.Question_Header}`,
+        data: congregationSums,
+        backgroundColor: this.graphColors
+      }]
+    }
   }
 }
 
